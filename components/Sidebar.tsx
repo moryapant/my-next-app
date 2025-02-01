@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -21,38 +21,29 @@ const Sidebar = () => {
     const [subfapps, setSubfapps] = useState<Subfapp[]>([]);
     const [joinedSubfapps, setJoinedSubfapps] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
+    const [joinLoading, setJoinLoading] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchSubfapps = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, 'subfapps'));
+                const q = query(collection(db, 'subfapps'), orderBy('memberCount', 'desc'));
+                const querySnapshot = await getDocs(q);
                 const fetchedSubfapps = querySnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 })) as Subfapp[];
                 setSubfapps(fetchedSubfapps);
 
-                // Fetch joined subfapps if user is logged in
+                // Fetch user's joined subfapps if logged in
                 if (user) {
-                    const membershipPromises = fetchedSubfapps.map(async (subfapp) => {
-                        const membersQuery = query(
-                            collection(db, 'subfapps', subfapp.id, 'members'),
-                            where('userId', '==', user.uid)
-                        );
-                        const memberSnapshot = await getDocs(membersQuery);
-                        return !memberSnapshot.empty;
-                    });
-
-                    const memberships = await Promise.all(membershipPromises);
-                    const joinedIds = new Set(
-                        fetchedSubfapps
-                            .filter((_, index) => memberships[index])
-                            .map(subfapp => subfapp.id)
-                    );
-                    setJoinedSubfapps(joinedIds);
+                    const userSnap = await getDocs(query(collection(db, 'users'), where('__name__', '==', user.uid)));
+                    if (!userSnap.empty) {
+                        const userData = userSnap.docs[0].data();
+                        setJoinedSubfapps(new Set(userData.joinedSubfapps || []));
+                    }
                 }
-            } catch (error) {
-                console.error('Error fetching subfapps:', error);
+            } catch (err) {
+                console.error('Error fetching subfapps:', err);
             } finally {
                 setLoading(false);
             }
@@ -63,51 +54,47 @@ const Sidebar = () => {
 
     const handleJoinToggle = async (subfappId: string) => {
         if (!user) return;
-
+        
+        setJoinLoading(subfappId);
         try {
-            const subfapp = subfapps.find(s => s.id === subfappId);
-            if (!subfapp) return;
+            const userRef = doc(db, 'users', user.uid);
+            const subfappRef = doc(db, 'subfapps', subfappId);
+            const isJoined = joinedSubfapps.has(subfappId);
 
-            if (joinedSubfapps.has(subfappId)) {
-                // Leave subfapp
-                const membersQuery = query(
-                    collection(db, 'subfapps', subfappId, 'members'),
-                    where('userId', '==', user.uid)
-                );
-                const memberSnapshot = await getDocs(membersQuery);
-                
-                if (!memberSnapshot.empty) {
-                    await deleteDoc(memberSnapshot.docs[0].ref);
-                    setJoinedSubfapps(prev => {
-                        const newSet = new Set(prev);
-                        newSet.delete(subfappId);
-                        return newSet;
-                    });
-                    // Update memberCount in subfapps state
-                    setSubfapps(prev => prev.map(s => 
-                        s.id === subfappId 
-                            ? { ...s, memberCount: s.memberCount - 1 }
-                            : s
-                    ));
-                }
-            } else {
-                // Join subfapp
-                await addDoc(collection(db, 'subfapps', subfappId, 'members'), {
-                    userId: user.uid,
-                    role: 'member',
-                    joinedAt: serverTimestamp(),
+            // Update user's joined subfapps
+            await updateDoc(userRef, {
+                joinedSubfapps: isJoined ? arrayRemove(subfappId) : arrayUnion(subfappId)
+            });
+
+            // Update subfapp's member count
+            const subfapp = subfapps.find(s => s.id === subfappId);
+            if (subfapp) {
+                await updateDoc(subfappRef, {
+                    memberCount: isJoined ? subfapp.memberCount - 1 : subfapp.memberCount + 1
                 });
-                
-                setJoinedSubfapps(prev => new Set([...Array.from(prev), subfappId]));
-                // Update memberCount in subfapps state
+
+                // Update local state
                 setSubfapps(prev => prev.map(s => 
                     s.id === subfappId 
-                        ? { ...s, memberCount: s.memberCount + 1 }
+                        ? { ...s, memberCount: isJoined ? s.memberCount - 1 : s.memberCount + 1 }
                         : s
                 ));
             }
-        } catch (error) {
-            console.error('Error toggling join status:', error);
+
+            // Update joined state
+            setJoinedSubfapps(prev => {
+                const next = new Set(prev);
+                if (isJoined) {
+                    next.delete(subfappId);
+                } else {
+                    next.add(subfappId);
+                }
+                return next;
+            });
+        } catch (err) {
+            console.error('Error toggling join status:', err);
+        } finally {
+            setJoinLoading(null);
         }
     };
 
@@ -140,7 +127,7 @@ const Sidebar = () => {
                                 <Link
                                     key={subfapp.id}
                                     href={`/subfapps/${subfapp.slug}`}
-                                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                                 >
                                     <div className="relative w-10 h-10 flex-shrink-0">
                                         {subfapp.imageUrl ? (
@@ -184,7 +171,7 @@ const Sidebar = () => {
                         .map(subfapp => (
                             <div
                                 key={subfapp.id}
-                                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                             >
                                 <div className="relative w-10 h-10 flex-shrink-0">
                                     {subfapp.imageUrl ? (
@@ -213,9 +200,14 @@ const Sidebar = () => {
                                 {user && (
                                     <button
                                         onClick={() => handleJoinToggle(subfapp.id)}
-                                        className="px-3 py-1 text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                                        disabled={joinLoading === subfapp.id}
+                                        className={`px-3 py-1 text-sm font-medium rounded-full transition-colors ${
+                                            joinedSubfapps.has(subfapp.id)
+                                                ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                                : 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
+                                        } disabled:opacity-50 whitespace-nowrap`}
                                     >
-                                        Join
+                                        {joinLoading === subfapp.id ? 'Loading...' : joinedSubfapps.has(subfapp.id) ? 'Joined' : 'Join'}
                                     </button>
                                 )}
                             </div>

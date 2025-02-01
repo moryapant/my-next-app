@@ -1,26 +1,59 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow anyone to read subfapps
     match /subfapps/{subfappId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if true;  // Anyone can read
+      allow create: if request.auth != null;  // Only authenticated users can create
+      allow update: if request.auth != null && (
+        // Allow updating member count
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount']) ||
+        // Allow updating other fields if user is the creator
+        request.auth.uid == resource.data.createdBy
+      );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
       
       match /members/{memberId} {
-        allow read: if true;
-        allow write: if request.auth != null;
+        allow read: if true;  // Anyone can read members
+        allow write: if request.auth != null;  // Only authenticated users can write
       }
     }
 
-    match /posts/{postId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
-      allow list: if true;
+    // Allow authenticated users to read and write their own user data
+    match /users/{userId} {
+      allow read: if true;  // Allow reading user profiles
+      // Users can only write to their own document
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow updating joinedSubfapps array
+      allow update: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedSubfapps']);
     }
 
-    match /members/{memberId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // Allow anyone to read posts
+    match /posts/{postId} {
+      allow read: if true;  // Anyone can read posts
+      allow create: if request.auth != null;  // Only authenticated users can create
+      // Only post author can update/delete
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      allow list: if true;  // Anyone can list posts
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;  // Anyone can read comments
+      allow create: if request.auth != null;  // Only authenticated users can create
+      // Only comment author can update/delete
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+    }
+
+    match /votes/{voteId} {
+      allow read: if true;  // Anyone can read votes
+      // Only authenticated users can create/update their own votes
+      allow create, update: if request.auth != null;
+      // Users can only delete their own votes
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 } 

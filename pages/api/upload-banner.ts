@@ -28,18 +28,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             uploadDir,
             keepExtensions: true,
             maxFileSize: 5 * 1024 * 1024, // 5MB
-            filename: (name, ext, part, form) => {
+            filename: (_name, ext) => {
                 // Generate a unique filename
                 const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
                 return `banner-${uniqueSuffix}${ext}`;
             }
         });
 
-        // Parse the form data
-        const [fields, files] = await new Promise<[formidable.Fields<string>, formidable.Files]>((resolve, reject) => {
-            form.parse(req, (err, fields, files) => {
+        // Parse the form data and get only the files
+        const files = await new Promise<formidable.Files>((resolve, reject) => {
+            form.parse(req, (err, _fields, files) => {
                 if (err) reject(err);
-                resolve([fields, files]);
+                resolve(files);
             });
         });
 

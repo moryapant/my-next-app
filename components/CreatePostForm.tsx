@@ -8,14 +8,16 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 interface CreatePostFormProps {
     subfappId: string;
     subfappName: string;
+    onSuccess?: () => void;
 }
 
-export default function CreatePostForm({ subfappId, subfappName }: CreatePostFormProps) {
+export default function CreatePostForm({ subfappId, subfappName, onSuccess }: CreatePostFormProps) {
     const { user } = useAuth();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,6 +45,8 @@ export default function CreatePostForm({ subfappId, subfappName }: CreatePostFor
         if (!user) return;
         
         setIsLoading(true);
+        setError('');
+
         try {
             // Create post document with base64 image strings
             await addDoc(collection(db, 'posts'), {
@@ -63,8 +67,13 @@ export default function CreatePostForm({ subfappId, subfappName }: CreatePostFor
             setContent('');
             setImageUrls([]);
             
+            // Call onSuccess callback if provided
+            if (onSuccess) {
+                onSuccess();
+            }
         } catch (error) {
             console.error('Error creating post:', error);
+            setError('Failed to create post. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -133,6 +142,10 @@ export default function CreatePostForm({ subfappId, subfappName }: CreatePostFor
                             </div>
                         ))}
                     </div>
+                )}
+
+                {error && (
+                    <div className="text-red-500 text-sm">{error}</div>
                 )}
 
                 <button

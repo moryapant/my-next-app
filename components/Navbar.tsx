@@ -192,6 +192,11 @@ export default function Navbar() {
               <CreatePostForm
                 subfappId={selectedSubfapp.id}
                 subfappName={selectedSubfapp.name}
+                onSuccess={() => {
+                  setShowCreatePost(false);
+                  // Force a refresh of the posts list
+                  window.location.reload();
+                }}
               />
             </div>
           </div>

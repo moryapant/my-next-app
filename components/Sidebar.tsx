@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -113,11 +113,14 @@ const Sidebar = () => {
 
     if (loading) {
         return (
-            <div className="h-full bg-white dark:bg-gray-800">
-                <div className="p-4 space-y-4">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="animate-pulse">
-                            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+            <div className="p-4">
+                <div className="animate-pulse space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                            <div className="flex-1">
+                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -126,76 +129,97 @@ const Sidebar = () => {
     }
 
     return (
-        <div className="h-full bg-white dark:bg-gray-800 overflow-y-auto">
-            <div className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Communities</h2>
-                    {user && (
-                        <Link
-                            href="/subfapps/create"
-                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                            Create New
-                        </Link>
-                    )}
-                </div>
-                <div className="space-y-2">
-                    {subfapps.length === 0 ? (
-                        <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-                            No communities yet
-                        </div>
-                    ) : (
-                        subfapps.map((subfapp) => (
-                            <div
-                                key={subfapp.id}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <Link
-                                        href={`/subfapps/${subfapp.slug.toLowerCase()}`}
-                                        className="flex items-center space-x-3 flex-1"
-                                    >
+        <div className="py-4">
+            <div className="px-4 mb-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Your Communities</h2>
+                {user && joinedSubfapps.size > 0 ? (
+                    <div className="space-y-3">
+                        {subfapps
+                            .filter(subfapp => joinedSubfapps.has(subfapp.id))
+                            .map(subfapp => (
+                                <Link
+                                    key={subfapp.id}
+                                    href={`/subfapps/${subfapp.slug}`}
+                                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    <div className="relative w-10 h-10 flex-shrink-0">
                                         {subfapp.imageUrl ? (
                                             <Image
                                                 src={subfapp.imageUrl}
                                                 alt={subfapp.name}
-                                                width={32}
-                                                height={32}
-                                                className="rounded-full"
+                                                fill
+                                                className="rounded-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
                                                 {subfapp.name[0].toUpperCase()}
                                             </div>
                                         )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                                f/{subfapp.name}
-                                            </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {subfapp.memberCount} members
-                                            </p>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                            {subfapp.name}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            {subfapp.memberCount} {subfapp.memberCount === 1 ? 'member' : 'members'}
+                                        </p>
+                                    </div>
+                                </Link>
+                            ))}
+                    </div>
+                ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {user ? "You haven't joined any communities yet." : "Sign in to join communities."}
+                    </p>
+                )}
+            </div>
+
+            <div className="px-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Popular Communities</h2>
+                <div className="space-y-3">
+                    {subfapps
+                        .filter(subfapp => !joinedSubfapps.has(subfapp.id))
+                        .sort((a, b) => b.memberCount - a.memberCount)
+                        .slice(0, 5)
+                        .map(subfapp => (
+                            <div
+                                key={subfapp.id}
+                                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                <div className="relative w-10 h-10 flex-shrink-0">
+                                    {subfapp.imageUrl ? (
+                                        <Image
+                                            src={subfapp.imageUrl}
+                                            alt={subfapp.name}
+                                            fill
+                                            className="rounded-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                                            {subfapp.name[0].toUpperCase()}
                                         </div>
-                                    </Link>
-                                    {user && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                handleJoinToggle(subfapp.id);
-                                            }}
-                                            className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                                                joinedSubfapps.has(subfapp.id)
-                                                    ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300'
-                                                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                                            }`}
-                                        >
-                                            {joinedSubfapps.has(subfapp.id) ? 'Joined' : 'Join'}
-                                        </button>
                                     )}
                                 </div>
+                                <div className="flex-1 min-w-0">
+                                    <Link href={`/subfapps/${subfapp.slug}`}>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate hover:text-blue-500 dark:hover:text-blue-400">
+                                            {subfapp.name}
+                                        </p>
+                                    </Link>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {subfapp.memberCount} {subfapp.memberCount === 1 ? 'member' : 'members'}
+                                    </p>
+                                </div>
+                                {user && (
+                                    <button
+                                        onClick={() => handleJoinToggle(subfapp.id)}
+                                        className="px-3 py-1 text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                                    >
+                                        Join
+                                    </button>
+                                )}
                             </div>
-                        ))
-                    )}
+                        ))}
                 </div>
             </div>
         </div>

@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "setup": "node scripts/setup-directories.js",
+    "dev": "npm run setup && next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

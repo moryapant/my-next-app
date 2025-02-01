@@ -1,9 +1,15 @@
+'use client';
+
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
+
+interface CreateSubFappFormProps {
+  onSuccess?: () => void;
+}
 
 const createSlug = (name: string): string => {
   return name
@@ -14,7 +20,7 @@ const createSlug = (name: string): string => {
     .replace(/-+/g, '-');        // Replace multiple - with single -
 };
 
-export default function CreateSubFappForm() {
+export default function CreateSubFappForm({ onSuccess }: CreateSubFappFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,62 +48,38 @@ export default function CreateSubFappForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      setError('You must be logged in to create a subfapp');
-      return;
-    }
+    if (!user) return;
 
     setIsLoading(true);
     setError('');
 
     try {
-      let imageUrl = '';
-
-      // Upload image if selected
-      if (fileInputRef.current?.files?.[0]) {
-        const formData = new FormData();
-        formData.append('file', fileInputRef.current.files[0]);
-
-        try {
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to upload image');
-          }
-
-          imageUrl = data.url;
-        } catch (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error('Failed to upload image. Please try again.');
-        }
-      }
-
       const slug = createSlug(formData.name);
-
-      // Create subfapp document
-      const subfappData = {
+      
+      const docRef = await addDoc(collection(db, 'subfapps'), {
         name: formData.name,
-        slug,
         description: formData.description,
-        imageUrl,
+        slug,
         createdAt: serverTimestamp(),
         createdBy: user.uid,
-        isPublic: formData.isPublic,
         memberCount: 1,
-      };
+        isPublic: formData.isPublic,
+      });
 
-      const docRef = await addDoc(collection(db, 'subfapps'), subfappData);
-      
-      // Navigate using the slug instead of ID
+      // Add creator as first member
+      await addDoc(collection(db, 'subfapps', docRef.id, 'members'), {
+        userId: user.uid,
+        role: 'admin',
+        joinedAt: serverTimestamp(),
+      });
+
+      if (onSuccess) {
+        onSuccess();
+      }
       router.push(`/subfapps/${slug}`);
     } catch (err) {
-      console.error('Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create subfapp. Please try again.');
+      setError('Failed to create subfapp. Please try again.');
+      console.error('Error creating subfapp:', err);
     } finally {
       setIsLoading(false);
     }

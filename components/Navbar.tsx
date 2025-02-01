@@ -1,176 +1,226 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
+import LoginButton from './LoginButton';
+import SubfappSelect from './SubfappSelect';
+import CreatePostForm from './CreatePostForm';
+import CreateSubFappForm from './CreateSubFappForm';
 
 export default function Navbar() {
-  const { user, signInWithGoogle, signOut } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [showCreateSubfapp, setShowCreateSubfapp] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [selectedSubfapp, setSelectedSubfapp] = useState<{ id: string; name: string } | null>(null);
+  const createMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (createMenuRef.current && !createMenuRef.current.contains(event.target as Node)) {
+        setShowCreateMenu(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <nav className="bg-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex-shrink-0 flex items-center">
-              <h1 className="text-xl font-bold">Blog App</h1>
-            </Link>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link 
-                href="/"
-                className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-              >
-                Home
+    <>
+      <nav className="bg-white dark:bg-gray-800 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <Link href="/" className="text-2xl font-bold text-gray-900 dark:text-white">
+                Fapp
               </Link>
-              <Link 
-                href="/subfapps"
-                className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-              >
-                Subfapps
-              </Link>
-              {user && (
-                <Link 
-                  href="/subfapps/create"
-                  className="text-indigo-600 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-300"
-                >
-                  Create Subfapp
-                </Link>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              {user ? (
+                <>
+                  <div className="relative" ref={createMenuRef}>
+                    <button
+                      onClick={() => setShowCreateMenu(!showCreateMenu)}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Create</span>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${showCreateMenu ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Create Menu Dropdown */}
+                    {showCreateMenu && (
+                      <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 overflow-hidden">
+                        {/* Create Post Option */}
+                        <div className="p-4">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Create a Post</h3>
+                          </div>
+                          <SubfappSelect
+                            onSelect={(subfapp) => {
+                              setSelectedSubfapp(subfapp);
+                              setShowCreatePost(true);
+                              setShowCreateMenu(false);
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <div className="border-t dark:border-gray-700"></div>
+                        
+                        {/* Create Subfapp Option */}
+                        <button
+                          onClick={() => {
+                            setShowCreateSubfapp(true);
+                            setShowCreateMenu(false);
+                          }}
+                          className="w-full text-left p-4 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          <span>Create New Subfapp</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* User Menu */}
+                  <div className="relative" ref={userMenuRef}>
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
+                      className="flex items-center space-x-2 focus:outline-none"
+                    >
+                      {user.photoURL ? (
+                        <Image
+                          src={user.photoURL}
+                          alt={user.displayName || 'User'}
+                          width={32}
+                          height={32}
+                          className="rounded-full ring-2 ring-gray-200 dark:ring-gray-700"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white ring-2 ring-gray-200 dark:ring-gray-700">
+                          {user.displayName?.[0] || user.email?.[0] || 'U'}
+                        </div>
+                      )}
+                      <svg
+                        className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* User Dropdown Menu */}
+                    {showUserMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 py-1">
+                        <div className="px-4 py-2 border-b dark:border-gray-700">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {user.displayName || user.email?.split('@')[0]}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {user.email}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            signOut();
+                            setShowUserMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <LoginButton />
               )}
             </div>
           </div>
+        </div>
+      </nav>
 
-          {/* Mobile menu button */}
-          <div className="sm:hidden flex items-center">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-            >
-              <span className="sr-only">Open main menu</span>
-              {!isMenuOpen ? (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              ) : (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-            </button>
-          </div>
-
-          <div className="hidden sm:flex items-center">
-            {user ? (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  {user.photoURL && (
-                    <Image
-                      src={user.photoURL}
-                      alt={user.displayName || 'User'}
-                      width={32}
-                      height={32}
-                      className="rounded-full"
-                    />
-                  )}
-                  <span className="hidden md:inline text-sm font-medium text-gray-700">
-                    {user.displayName}
-                  </span>
-                </div>
-                <button
-                  onClick={signOut}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
+      {/* Create Post Modal */}
+      {showCreatePost && selectedSubfapp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Create Post in subfapps/{selectedSubfapp.name}
+              </h2>
               <button
-                onClick={signInWithGoogle}
-                className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowCreatePost(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                <span>Sign in with Google</span>
               </button>
-            )}
+            </div>
+            <div className="p-4">
+              <CreatePostForm
+                subfappId={selectedSubfapp.id}
+                subfappName={selectedSubfapp.name}
+              />
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Mobile menu */}
-        <div className={`sm:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
-          <div className="pt-2 pb-3 space-y-1">
-            <Link
-              href="/"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              Home
-            </Link>
-            <Link
-              href="/subfapps"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              Subfapps
-            </Link>
-            {user && (
-              <Link
-                href="/subfapps/create"
-                className="block px-3 py-2 rounded-md text-base font-medium text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50"
+      {/* Create Subfapp Modal */}
+      {showCreateSubfapp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Create New Subfapp
+              </h2>
+              <button
+                onClick={() => setShowCreateSubfapp(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
-                Create Subfapp
-              </Link>
-            )}
-          </div>
-          <div className="pt-4 pb-3 border-t border-gray-200">
-            {user ? (
-              <div className="flex items-center px-4">
-                {user.photoURL && (
-                  <Image
-                    src={user.photoURL}
-                    alt={user.displayName || 'User'}
-                    width={32}
-                    height={32}
-                    className="rounded-full"
-                  />
-                )}
-                <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800">{user.displayName}</div>
-                  <div className="text-sm font-medium text-gray-500">{user.email}</div>
-                </div>
-                <button
-                  onClick={signOut}
-                  className="ml-auto bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <div className="px-4">
-                <button
-                  onClick={signInWithGoogle}
-                  className="w-full flex items-center justify-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <span>Sign in with Google</span>
-                </button>
-              </div>
-            )}
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <CreateSubFappForm onSuccess={() => setShowCreateSubfapp(false)} />
+            </div>
           </div>
         </div>
-      </div>
-    </nav>
+      )}
+    </>
   );
 } 

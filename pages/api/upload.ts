@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import formidable from 'formidable';
+import formidable, { File } from 'formidable';
 import fs from 'fs';
 import path from 'path';
 
@@ -8,6 +8,8 @@ export const config = {
     bodyParser: false,
   },
 };
+
+type FormidableParseResult = [formidable.Fields, formidable.Files];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -27,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       maxFileSize: 5 * 1024 * 1024, // 5MB
     });
 
-    const [fields, files] = await new Promise((resolve, reject) => {
+    const [, files] = await new Promise<FormidableParseResult>((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) {
           console.error('Form parse error:', err);
@@ -38,7 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Handle file upload
-    const uploadedFile = files.file?.[0] || files.file; // Handle both array and single file cases
+    const fileArray = files.file as File[];
+    const uploadedFile = fileArray?.[0];
     if (!uploadedFile) {
       console.error('No file received');
       return res.status(400).json({ error: 'No file uploaded' });
@@ -48,25 +51,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const newPath = path.join(uploadDir, fileName);
 
     try {
-      // Move the file
-      await fs.promises.rename(uploadedFile.filepath, newPath);
+      // Rename file to include timestamp
+      fs.renameSync(uploadedFile.filepath, newPath);
 
-      // Return the URL
-      return res.status(200).json({
-        url: `/uploads/${fileName}`,
-      });
-    } catch (moveError) {
-      console.error('Error moving file:', moveError);
-      // Cleanup if move fails
+      // Return the URL for the uploaded file
+      const fileUrl = `/uploads/${path.basename(newPath)}`;
+      return res.status(200).json({ url: fileUrl });
+    } catch (err) {
+      console.error('Error moving file:', err);
+      // Clean up the uploaded file
       if (fs.existsSync(uploadedFile.filepath)) {
         fs.unlinkSync(uploadedFile.filepath);
       }
-      throw moveError;
+      return res.status(500).json({ error: 'Error processing file' });
     }
-  } catch (error) {
-    console.error('Upload error:', error);
-    return res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to upload file' 
-    });
+  } catch (err) {
+    console.error('Upload error:', err);
+    return res.status(500).json({ error: 'Error uploading file' });
   }
 } 

@@ -216,11 +216,37 @@ export default function PostList() {
                             {/* Images */}
                             {post.images && post.images.length > 0 && (
                                 <div className="mt-3">
-                                    <img 
-                                        src={post.images[0]} 
-                                        alt="Post image" 
-                                        className="rounded-md max-h-96 object-contain"
-                                    />
+                                    <div className={`grid gap-2 ${
+                                        post.images.length === 1 ? 'grid-cols-1' : 
+                                        post.images.length === 2 ? 'grid-cols-2' :
+                                        'grid-cols-2'
+                                    }`}>
+                                        {post.images.slice(0, 4).map((image, index) => (
+                                            <div 
+                                                key={index} 
+                                                className={`relative ${
+                                                    post.images.length === 1 ? 'h-96' : 
+                                                    post.images.length === 2 ? 'h-64' :
+                                                    'h-48'
+                                                } ${
+                                                    post.images.length > 4 && index === 3 ? 'relative' : ''
+                                                }`}
+                                            >
+                                                <img 
+                                                    src={image} 
+                                                    alt={`Post image ${index + 1}`} 
+                                                    className="rounded-md w-full h-full object-cover"
+                                                />
+                                                {post.images.length > 4 && index === 3 && (
+                                                    <div className="absolute inset-0 bg-black/50 rounded-md flex items-center justify-center">
+                                                        <span className="text-white text-lg font-medium">
+                                                            +{post.images.length - 4} more
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 

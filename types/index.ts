@@ -1,11 +1,13 @@
+import { Timestamp } from 'firebase/firestore';
+
 export interface SubFapp {
   id: string;
   name: string;
-  description: string;
   slug: string;
+  description: string;
   imageUrl: string;
-  createdAt: number;
+  createdAt: Timestamp;
   createdBy: string;
-  memberCount: number;
   isPublic: boolean;
+  memberCount: number;
 } 

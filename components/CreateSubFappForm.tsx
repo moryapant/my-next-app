@@ -133,7 +133,7 @@ export default function CreateSubFappForm({ onSuccess }: CreateSubFappFormProps)
         slug,
         imageUrl,
         createdAt: serverTimestamp(),
-        createdBy: user.uid,
+        creatorId: user.uid,
         memberCount: 1,
         isPublic: formData.isPublic,
       });

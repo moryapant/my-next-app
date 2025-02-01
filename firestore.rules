@@ -7,12 +7,12 @@ service cloud.firestore {
       allow read: if true;  // Anyone can read
       allow create: if request.auth != null;  // Only authenticated users can create
       allow update: if request.auth != null && (
-        // Allow updating member count
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount']) ||
+        // Allow updating member count and banner URL
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount', 'bannerUrl']) ||
         // Allow updating other fields if user is the creator
-        request.auth.uid == resource.data.createdBy
+        request.auth.uid == resource.data.creatorId
       );
-      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.creatorId;
       
       match /members/{memberId} {
         allow read: if true;  // Anyone can read members

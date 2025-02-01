@@ -6,6 +6,7 @@ import PostList from '@/components/PostList';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
+import SubfappBanner from '@/components/SubfappBanner';
 
 interface SubFapp {
     id: string;
@@ -16,6 +17,7 @@ interface SubFapp {
     bannerUrl?: string;
     memberCount: number;
     createdAt: { seconds: number; nanoseconds: number };
+    creatorId: string;
 }
 
 export default function SubFappPage() {
@@ -50,6 +52,15 @@ export default function SubFappPage() {
 
                 const doc = querySnapshot.docs[0];
                 const data = doc.data();
+                
+                // Debug the data we're getting from Firestore
+                console.log('Fetched Subfapp Data:', {
+                    id: doc.id,
+                    creatorId: data.creatorId,
+                    createdBy: data.createdBy, // Check if this exists instead
+                    data: data
+                });
+
                 setSubfapp({
                     id: doc.id,
                     name: data.name,
@@ -59,6 +70,8 @@ export default function SubFappPage() {
                     bannerUrl: data.bannerUrl,
                     memberCount: data.memberCount || 0,
                     createdAt: data.createdAt,
+                    // Use creatorId if it exists, fall back to createdBy for older documents
+                    creatorId: data.creatorId || data.createdBy,
                 });
 
                 // Check if user is a member
@@ -139,20 +152,14 @@ export default function SubFappPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Banner Section */}
-            <div className="relative h-48 md:h-64 w-full">
-                {subfapp?.bannerUrl ? (
-                    <Image
-                        src={subfapp.bannerUrl}
-                        alt={`${subfapp.name} banner`}
-                        fill
-                        className="object-cover"
-                        priority
-                    />
-                ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600" />
-                )}
-                <div className="absolute inset-0 bg-black/30" />
-            </div>
+            <SubfappBanner
+                subfappId={subfapp.id}
+                creatorId={subfapp.creatorId}
+                bannerUrl={subfapp.bannerUrl}
+                onBannerUpdate={(newUrl) => {
+                    setSubfapp(prev => prev ? { ...prev, bannerUrl: newUrl } : null);
+                }}
+            />
 
             {/* Content Section */}
             <div className="relative -mt-8 pb-8">

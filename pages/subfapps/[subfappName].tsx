@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import PostList from '@/components/PostList';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
+import Image from 'next/image';
 
 interface SubFapp {
     id: string;
@@ -12,6 +13,7 @@ interface SubFapp {
     description: string;
     slug: string;
     imageUrl?: string;
+    bannerUrl?: string;
     memberCount: number;
     createdAt: { seconds: number; nanoseconds: number };
 }
@@ -54,6 +56,7 @@ export default function SubFappPage() {
                     description: data.description,
                     slug: data.slug,
                     imageUrl: data.imageUrl,
+                    bannerUrl: data.bannerUrl,
                     memberCount: data.memberCount || 0,
                     createdAt: data.createdAt,
                 });
@@ -134,54 +137,95 @@ export default function SubFappPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-12">
-            <div className="max-w-[1000px] mx-auto flex gap-6 px-4">
-                <main className="flex-1 min-w-0">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                {subfapp.imageUrl && (
-                                    <img
-                                        src={subfapp.imageUrl}
-                                        alt={subfapp.name}
-                                        className="w-16 h-16 rounded-full object-cover"
-                                    />
-                                )}
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                        f/{subfapp.name}
-                                    </h1>
-                                    <p className="text-gray-500 dark:text-gray-400">
-                                        {subfapp.description}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        {subfapp.memberCount} {subfapp.memberCount === 1 ? 'member' : 'members'}
-                                    </p>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            {/* Banner Section */}
+            <div className="relative h-48 md:h-64 w-full">
+                {subfapp?.bannerUrl ? (
+                    <Image
+                        src={subfapp.bannerUrl}
+                        alt={`${subfapp.name} banner`}
+                        fill
+                        className="object-cover"
+                        priority
+                    />
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600" />
+                )}
+                <div className="absolute inset-0 bg-black/30" />
+            </div>
+
+            {/* Content Section */}
+            <div className="relative -mt-8 pb-8">
+                <div className="max-w-[1000px] mx-auto px-4">
+                    <div className="flex flex-col lg:flex-row gap-6">
+                        <main className="flex-1 min-w-0">
+                            {/* Community Info Card */}
+                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg mb-4">
+                                <div className="p-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+                                        {/* Community Icon */}
+                                        <div className="relative w-24 h-24 mx-auto sm:mx-0 -mt-16 sm:-mt-16 z-10">
+                                            {subfapp?.imageUrl ? (
+                                                <Image
+                                                    src={subfapp.imageUrl}
+                                                    alt={subfapp.name}
+                                                    fill
+                                                    className="rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-md"
+                                                />
+                                            ) : (
+                                                <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-3xl text-white font-bold border-4 border-white dark:border-gray-800 shadow-md">
+                                                    {subfapp?.name[0].toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Community Info */}
+                                        <div className="flex-1 min-w-0 text-center sm:text-left mt-4 sm:mt-0">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                                <div className="space-y-2">
+                                                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                                                        f/{subfapp?.name}
+                                                    </h1>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                        {subfapp?.memberCount.toLocaleString()} {subfapp?.memberCount === 1 ? 'member' : 'members'}
+                                                    </p>
+                                                    <p className="text-gray-600 dark:text-gray-300 text-sm max-w-2xl">
+                                                        {subfapp?.description}
+                                                    </p>
+                                                </div>
+                                                {user && (
+                                                    <div className="sm:self-start">
+                                                        <button
+                                                            onClick={handleJoinToggle}
+                                                            disabled={joinLoading}
+                                                            className={`px-8 py-2 rounded-full font-medium text-sm transition-colors w-full sm:w-auto ${
+                                                                isJoined
+                                                                    ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                                                    : 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
+                                                            } disabled:opacity-50`}
+                                                        >
+                                                            {joinLoading ? 'Loading...' : isJoined ? 'Joined' : 'Join'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            {user && (
-                                <button
-                                    onClick={handleJoinToggle}
-                                    disabled={joinLoading}
-                                    className={`px-4 py-2 rounded-full font-medium transition-colors ${
-                                        isJoined
-                                            ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                            : 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
-                                    } disabled:opacity-50`}
-                                >
-                                    {joinLoading ? 'Loading...' : isJoined ? 'Joined' : 'Join'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                    <PostList />
-                </main>
 
-                <aside className="hidden lg:block w-[312px] flex-none">
-                    <div className="sticky top-[3.5rem]">
-                        <Sidebar />
+                            {/* Posts */}
+                            <PostList />
+                        </main>
+
+                        {/* Sidebar */}
+                        <aside className="hidden lg:block w-80 flex-none">
+                            <div className="sticky top-32 pt-4">
+                                <Sidebar />
+                            </div>
+                        </aside>
                     </div>
-                </aside>
+                </div>
             </div>
         </div>
     );
